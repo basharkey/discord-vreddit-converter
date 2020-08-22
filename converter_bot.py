@@ -1,4 +1,4 @@
-#!/usr/bin/python3
+#!/usr/bin/env python3
 
 from requests_html import HTMLSession
 from dotenv import load_dotenv
@@ -49,7 +49,7 @@ def compress_video(out_file):
         
         # rerender video to meet size requirements
         comp_file = 'comp.mp4'
-        subprocess.run(['ffmpeg', '-y', '-i', out_file, '-c:v', 'libx264', '-b:v', str(target_video_bitrate) + 'k', '-pass', '1', '-an', '-f', 'mp4', '/dev/null'])
+        subprocess.run(['ffmpeg', '-y', '-i', out_file, '-c:v', 'libx264', '-b:v', str(target_video_bitrate) + 'k', '-pass', '1', '-an', '-f', 'mp4', '-'])
         subprocess.run(['ffmpeg', '-i', out_file, '-c:v', 'libx264', '-b:v', str(target_video_bitrate) + 'k', '-pass', '2', '-c:a', 'aac', '-b:a', str(audio_bitrate) + 'k', comp_file])
         os.rename(comp_file, out_file)
 
