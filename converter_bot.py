@@ -57,7 +57,7 @@ bot = discord.Client()
 
 @bot.event
 async def on_message(message):
-    if message.content in 'https://www.reddit.com/r/' or 'https://old.reddit.com/r/':
+    if 'https://www.reddit.com/r/' in message.content or 'https://old.reddit.com/r/' in message.content:
         print("reddit post")
         vreddit_id = parse_video_url(message.content)
         if vreddit_id:
