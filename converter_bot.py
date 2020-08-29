@@ -28,7 +28,12 @@ def retrieve_video(vreddit_id):
     r = requests.get('https://v.redd.it/' + vreddit_id + '/DASH_360.mp4')
     with open (video_file, 'wb') as f:
         f.write(r.content)
+
     r = requests.get('https://v.redd.it/' + vreddit_id + '/DASH_audio.mp4')
+    # some reddit videos dont contain audio, if audio doesnt exist post video only
+    if 'Access Denied' in str(r.content):
+        return video_file
+
     with open (audio_file, 'wb') as f:
         f.write(r.content)
 
