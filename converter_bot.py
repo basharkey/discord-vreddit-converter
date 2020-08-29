@@ -2,6 +2,7 @@
 
 from requests_html import HTMLSession
 from dotenv import load_dotenv
+import time
 import requests
 import re
 import os
@@ -58,6 +59,9 @@ def compress_video(out_file):
         subprocess.run(['ffmpeg', '-i', out_file, '-c:v', 'libx264', '-b:v', str(target_video_bitrate) + 'k', '-pass', '2', '-c:a', 'aac', '-b:a', str(audio_bitrate) + 'k', comp_file])
         os.rename(comp_file, out_file)
 
+
+load_dotenv()
+token = os.getenv('token')
 bot = discord.Client()
 
 @bot.event
@@ -75,6 +79,11 @@ async def on_message(message):
             print("not vreddit")
             return
 
-load_dotenv()
-token = os.getenv('token')
-bot.run(token)
+while True:
+    try:
+        r = requests.head('https://discord.com')
+        if r.status_code == 200:
+            bot.run(token)
+    except Exception as e:
+        print(e)
+    time.sleep(10)
