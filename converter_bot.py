@@ -10,11 +10,15 @@ import subprocess
 import discord
 
 def parse_video_url(vreddit_url):
+    if 'https://old.reddit.com/r/' in vreddit_url:
+        vreddit_url = vreddit_url.replace('https://old.', 'https://www.')
+
     # get reddit video id from reddit post
     sess = HTMLSession()
     resp = sess.get(vreddit_url)
     resp = str(resp.html.find('source'))
     try:
+        print(resp)
         vreddit_id = re.search(r'https://v.redd.it/(.*?)/HLSPlaylist.m3u8', resp).group(1)
         return vreddit_id
     except:
