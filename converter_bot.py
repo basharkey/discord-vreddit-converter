@@ -2,6 +2,7 @@
 
 from requests_html import HTMLSession
 from dotenv import load_dotenv
+import sys
 import time
 import requests
 import re
@@ -18,7 +19,6 @@ def parse_video_url(vreddit_url):
     resp = sess.get(vreddit_url)
     resp = str(resp.html.find('source'))
     try:
-        print(resp)
         vreddit_id = re.search(r'https://v.redd.it/(.*?)/HLSPlaylist.m3u8', resp).group(1)
         return vreddit_id
     except:
@@ -30,9 +30,22 @@ def retrieve_video(vreddit_id):
     out_file = 'out.mp4'
 
     # get video and audio files
-    r = requests.get('https://v.redd.it/' + vreddit_id + '/DASH_360.mp4')
-    with open (video_file, 'wb') as f:
-        f.write(r.content)
+    supported_resolutions = ['1080', '720', '480', '360', '240']
+    for resolution in supported_resolutions:
+        print(f'downloading at resolution: {resolution}')
+        r = requests.get('https://v.redd.it/' + vreddit_id + '/DASH_' + resolution + '.mp4')
+        try:
+            if 'AccessDenied' in r.content.decode():
+                print(f'could not find resolution: {resolution}')
+                continue
+        except:
+            if (sys.getsizeof(r.content)/(1024*1024)) > 8:
+                print(f'video size too big: {sys.getsizeof(r.content)/(1024*1024)} MB')
+                continue
+
+        with open (video_file, 'wb') as f:
+            f.write(r.content)
+        break
 
     r = requests.get('https://v.redd.it/' + vreddit_id + '/DASH_audio.mp4')
     # some reddit videos dont contain audio, if audio doesnt exist post video only
