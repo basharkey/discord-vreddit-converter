@@ -5,4 +5,4 @@ Requires ffmpeg to be installed and in path
 
 Update the .env file to contain your bots token
 
-`pip install -r requirements.txt`
+`pip3 install -r requirements.txt`
