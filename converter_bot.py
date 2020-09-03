@@ -39,7 +39,7 @@ def retrieve_video(vreddit_id):
                 print(f'could not find resolution: {resolution}')
                 continue
         except:
-            if (sys.getsizeof(r.content)/(1024*1024)) > 8:
+            if (sys.getsizeof(r.content)/(1024*1024)) > 8 and resolution is not supported_resolutions[-1]:
                 print(f'video size too big: {sys.getsizeof(r.content)/(1024*1024)} MB')
                 continue
 
