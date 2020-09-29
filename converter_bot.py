@@ -17,26 +17,39 @@ def parse_video_url(vreddit_url):
     # get reddit video id from reddit post
     sess = HTMLSession()
     resp = sess.get(vreddit_url)
-    resp = str(resp.html.find('source'))
     try:
-        vreddit_id = re.search(r'https://v.redd.it/(.*?)/HLSPlaylist.m3u8', resp).group(1)
-        return vreddit_id
+        resp.html.search('"flair":[{"text":"{}"')[0]
+        is_nsfw = True
+        print('NSFW video')
+    except:
+        is_nsfw = False
+        pass
+
+    try:
+        vreddit_id = resp.html.search('"contentUrl":"https://v.redd.it/{}/HLSPlaylist.m3u8')[0]
+        print(repr(vreddit_id))
+        return vreddit_id, is_nsfw
     except:
         return False
 
-def retrieve_video(vreddit_id):
-    video_file = 'video.mp4'
+def retrieve_video(vreddit_id, is_nsfw):
+    if is_nsfw:
+        video_file = 'SPOILER_video.mp4'
+        out_file = 'SPOILER_out.mp4'
+    else:
+        video_file = 'video.mp4'
+        out_file = 'out.mp4'
     audio_file = 'audio.mp4'
-    out_file = 'out.mp4'
+
 
     # get video and audio files
     supported_resolutions = ['1080', '720', '480', '360', '240']
     for resolution in supported_resolutions:
-        print(f'downloading at resolution: {resolution}')
+        print(f'downloading @ {resolution}')
         r = requests.get('https://v.redd.it/' + vreddit_id + '/DASH_' + resolution + '.mp4')
         try:
             if 'AccessDenied' in r.content.decode():
-                print(f'could not find resolution: {resolution}')
+                print(f'could not donwload @ {resolution}')
                 continue
         except:
             if (sys.getsizeof(r.content)/(1024*1024)) > 8 and resolution is not supported_resolutions[-1]:
@@ -85,13 +98,16 @@ bot = discord.Client()
 async def on_message(message):
     if 'https://www.reddit.com/r/' in message.content or 'https://old.reddit.com/r/' in message.content or 'https://v.redd.it/' in message.content:
         print("reddit post")
-        vreddit_id = parse_video_url(message.content)
+        vreddit_id, is_nsfw = parse_video_url(message.content)
         if vreddit_id:
-            out_file = retrieve_video(vreddit_id)
+            out_file = retrieve_video(vreddit_id, is_nsfw)
             video_size = os.path.getsize(out_file)/(1024*1024)
             if video_size > 8: # Discords regular user upload limit
                 compress_video(out_file)
-            await message.channel.send(file=discord.File(out_file))
+            if is_nsfw:
+                await message.channel.send(content='[NSFW]', file=discord.File(out_file))
+            else:
+                await message.channel.send(file=discord.File(out_file))
         else:
             print("not vreddit")
             return
@@ -104,3 +120,4 @@ while True:
     except Exception as e:
         print(e)
     time.sleep(10)
+ut
