@@ -10,6 +10,8 @@ Update the .env file to contain your bots token
 # Running with Docker
 `cd discord_vreddit_converter/`
 
+Update the .env file to contain your bots token
+
 `docker build . -t discord_vreddit_converter`
 
 `docker run -it -d --restart unless-stopped discord_vreddit_converter:latest`
