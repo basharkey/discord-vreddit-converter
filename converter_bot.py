@@ -1,5 +1,4 @@
 #!/usr/bin/env python3
-
 from requests_html import HTMLSession
 from dotenv import load_dotenv
 import sys
@@ -112,12 +111,4 @@ async def on_message(message):
             print("not vreddit")
             return
 
-while True:
-    try:
-        r = requests.head('https://discord.com')
-        if r.status_code == 200:
-            bot.run(token)
-    except Exception as e:
-        print(e)
-    time.sleep(10)
-ut
+bot.run(token)
