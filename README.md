@@ -8,10 +8,10 @@ Update the .env file to contain your bots token
 `pip3 install -r requirements.txt`
 
 # Running with Docker
-`cd discord_vreddit_converter/`
+`cd discord-vreddit-converter/`
 
 Update the .env file to contain your bots token
 
-`docker build . -t discord_vreddit_converter`
+`docker build . -t discord-vreddit-converter`
 
-`docker run -it -d --restart unless-stopped discord_vreddit_converter:latest`
+`docker run -it -d --restart unless-stopped discord-vreddit-converter:latest`
