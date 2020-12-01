@@ -31,6 +31,7 @@ def parse_video_url(vreddit_url):
     except:
         return False, False
 
+
 def compress_video(files, max_size):
         video_file = files[0]
 
@@ -42,27 +43,36 @@ def compress_video(files, max_size):
 
         # determine target bitrate to achieve target size
         target_bitrate = (max_size * 1024 * 1024 * 8 / duration / 1024)
-
+        comp_file = 'comp.mp4'
+    
         try:
             audio_file = files[1]
 
-            # get audio bitrate kb
-            audio_bitrate = float(subprocess.check_output(['ffprobe', '-v', 'quiet', '-select_streams', 'a:0', '-show_entries', 'stream=bit_rate', '-of', 'default=noprint_wrappers=1:nokey=1', audio_file]).decode()) / 1024
-
-            comp_ratio = target_bitrate / (video_bitrate + audio_bitrate)
-            target_audio_bitrate = audio_bitrate * comp_ratio
+            if comp_audio:
+                # get audio bitrate kb
+                audio_bitrate = float(subprocess.check_output(['ffprobe', '-v', 'quiet', '-select_streams', 'a:0', '-show_entries', 'stream=bit_rate', '-of', 'default=noprint_wrappers=1:nokey=1', audio_file]).decode()) / 1024
+    
+                comp_ratio = target_bitrate / (video_bitrate + audio_bitrate)
+                target_audio_bitrate = audio_bitrate * comp_ratio
+            else:
+                audio_size = total_file_size([audio_file])
+                target_video_bitrate = ((max_size - audio_size) * 1024 * 1024 * 8 / duration / 1024)
+                subprocess.run(['ffmpeg', '-y', '-i', video_file, '-i', audio_file, '-b:v', str(target_video_bitrate) + 'k', comp_file])
+                return comp_file
         except:
             comp_ratio = target_bitrate / video_bitrate
-
+    
         target_video_bitrate = video_bitrate * comp_ratio
 
-        comp_file = 'comp.mp4'
         try:
             subprocess.run(['ffmpeg', '-y', '-i', video_file, '-i', audio_file, '-b:v', str(target_video_bitrate) + 'k', '-b:a', str(target_audio_bitrate) + 'k', comp_file])
         except:
             subprocess.run(['ffmpeg', '-y', '-i', video_file, '-b:v', str(target_video_bitrate) + 'k', comp_file])
+    
         
         return comp_file
+
+
 
 def total_file_size(files):
     total_size = 0
@@ -70,6 +80,7 @@ def total_file_size(files):
         total_size += os.path.getsize(file) / (1024 * 1024)
     print(f"{total_size} MB")
     return total_size
+
 
 def retrieve_video(vreddit_id, max_size):
     video_file = 'video.mp4'
@@ -111,9 +122,13 @@ def retrieve_video(vreddit_id, max_size):
         return out_file 
 
 
-
 load_dotenv()
 token = os.getenv('token')
+comp_audio = os.getenv('compress_audio')
+if comp_audio == 'true':
+    comp_audio = True
+else:
+    comp_audio = False
 bot = discord.Client()
 
 @bot.event
