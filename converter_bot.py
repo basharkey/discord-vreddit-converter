@@ -16,28 +16,74 @@ def parse_video_url(vreddit_url):
     # get reddit video id from reddit post
     sess = HTMLSession()
     resp = sess.get(vreddit_url)
+
     try:
         resp.html.search('"flair":[{"text":"{}"')[0]
         is_nsfw = True
         print('NSFW video')
     except:
         is_nsfw = False
-        pass
 
     try:
         vreddit_id = resp.html.search('"contentUrl":"https://v.redd.it/{}/HLSPlaylist.m3u8')[0]
         print(repr(vreddit_id))
         return vreddit_id, is_nsfw
     except:
-        return False
+        return False, False
 
-def retrieve_video(vreddit_id, is_nsfw):
-    if is_nsfw:
-        video_file = 'SPOILER_video.mp4'
-        out_file = 'SPOILER_out.mp4'
-    else:
-        video_file = 'video.mp4'
-        out_file = 'out.mp4'
+
+def compress_video(files, max_size):
+        video_file = files[0]
+
+        # get video duration sec
+        duration = float(subprocess.check_output(['ffprobe', '-v', 'quiet', '-select_streams', 'v:0', '-show_entries', 'stream=duration', '-of', 'default=noprint_wrappers=1:nokey=1', video_file]).decode())
+
+        # get video bitrate kb
+        video_bitrate = float(subprocess.check_output(['ffprobe', '-v', 'quiet', '-select_streams', 'v:0', '-show_entries', 'stream=bit_rate', '-of', 'default=noprint_wrappers=1:nokey=1', video_file]).decode()) / 1024
+
+        # determine target bitrate to achieve target size
+        target_bitrate = (max_size * 1024 * 1024 * 8 / duration / 1024)
+        comp_file = 'comp.mp4'
+    
+        try:
+            audio_file = files[1]
+
+            if comp_audio:
+                # get audio bitrate kb
+                audio_bitrate = float(subprocess.check_output(['ffprobe', '-v', 'quiet', '-select_streams', 'a:0', '-show_entries', 'stream=bit_rate', '-of', 'default=noprint_wrappers=1:nokey=1', audio_file]).decode()) / 1024
+    
+                comp_ratio = target_bitrate / (video_bitrate + audio_bitrate)
+                target_audio_bitrate = audio_bitrate * comp_ratio
+            else:
+                audio_size = total_file_size([audio_file])
+                target_video_bitrate = ((max_size - audio_size) * 1024 * 1024 * 8 / duration / 1024)
+                subprocess.run(['ffmpeg', '-y', '-i', video_file, '-i', audio_file, '-b:v', str(target_video_bitrate) + 'k', comp_file])
+                return comp_file
+        except:
+            comp_ratio = target_bitrate / video_bitrate
+    
+        target_video_bitrate = video_bitrate * comp_ratio
+
+        try:
+            subprocess.run(['ffmpeg', '-y', '-i', video_file, '-i', audio_file, '-b:v', str(target_video_bitrate) + 'k', '-b:a', str(target_audio_bitrate) + 'k', comp_file])
+        except:
+            subprocess.run(['ffmpeg', '-y', '-i', video_file, '-b:v', str(target_video_bitrate) + 'k', comp_file])
+    
+        
+        return comp_file
+
+
+
+def total_file_size(files):
+    total_size = 0
+    for file in files:
+        total_size += os.path.getsize(file) / (1024 * 1024)
+    print(f"{total_size} MB")
+    return total_size
+
+
+def retrieve_video(vreddit_id, max_size):
+    video_file = 'video.mp4'
     audio_file = 'audio.mp4'
 
 
@@ -46,64 +92,58 @@ def retrieve_video(vreddit_id, is_nsfw):
     for resolution in supported_resolutions:
         print(f'downloading @ {resolution}')
         r = requests.get('https://v.redd.it/' + vreddit_id + '/DASH_' + resolution + '.mp4')
-        try:
-            if 'AccessDenied' in r.content.decode():
-                print(f'could not donwload @ {resolution}')
-                continue
-        except:
-            if (sys.getsizeof(r.content)/(1024*1024)) > 8 and resolution is not supported_resolutions[-1]:
-                print(f'video size too big: {sys.getsizeof(r.content)/(1024*1024)} MB')
-                continue
 
-        with open (video_file, 'wb') as f:
-            f.write(r.content)
-        break
+        if 'Access Denied' in str(r.content):
+            print(f'could not donwload @ {resolution}')
+            continue
+        else:
+            with open (video_file, 'wb') as f:
+                f.write(r.content)
+            break
 
     r = requests.get('https://v.redd.it/' + vreddit_id + '/DASH_audio.mp4')
     # some reddit videos dont contain audio, if audio doesnt exist post video only
     if 'Access Denied' in str(r.content):
-        return video_file
+        if total_file_size([video_file]) > max_size:
+            out_file = compress_video([video_file], max_size)
+        else:
+            out_file = video_file
+        return out_file 
+    else:
+        with open (audio_file, 'wb') as f:
+            f.write(r.content)
 
-    with open (audio_file, 'wb') as f:
-        f.write(r.content)
-
-    # combine video and audio files
-    subprocess.run(['ffmpeg', '-y', '-i', video_file, '-i', audio_file, out_file])
-    return out_file
-
-def compress_video(out_file):
-        # get video duration
-        duration = float(subprocess.check_output(['ffprobe', '-v', 'error', '-select_streams', 'v:0', '-show_entries', 'stream=duration', '-of', 'default=noprint_wrappers=1:nokey=1', out_file]).decode())
-
-        # get audio bitrate
-        audio_bitrate = subprocess.check_output(['ffprobe', '-v', 'error', '-of', 'flat=s=_', '-select_streams', 'a:0', '-show_entries', 'stream=bit_rate', out_file]).decode()
-        audio_bitrate = float(int(re.search(r'"(.*?)"', audio_bitrate).group(1)) / 1000)
-        
-        # determine target bitrate to achieve video size of 8 MB
-        target_video_bitrate = (8 * 8192) / (1.048576 * duration) - audio_bitrate
-        
-        # rerender video to meet size requirements
-        comp_file = 'comp.mp4'
-        subprocess.run(['ffmpeg', '-y', '-i', out_file, '-c:v', 'libx264', '-b:v', str(target_video_bitrate) + 'k', '-pass', '1', '-an', '-f', 'mp4', '-'])
-        subprocess.run(['ffmpeg', '-i', out_file, '-c:v', 'libx264', '-b:v', str(target_video_bitrate) + 'k', '-pass', '2', '-c:a', 'aac', '-b:a', str(audio_bitrate) + 'k', comp_file])
-        os.rename(comp_file, out_file)
+        if total_file_size([video_file, audio_file]) > max_size:
+            out_file = compress_video([video_file, audio_file], max_size)
+        else:
+            out_file = 'out.mp4'
+            subprocess.run(['ffmpeg', '-y', '-i', video_file, '-i', audio_file, out_file])
+            
+        return out_file 
 
 
 load_dotenv()
 token = os.getenv('token')
+comp_audio = os.getenv('compress_audio')
+if comp_audio == 'true':
+    comp_audio = True
+else:
+    comp_audio = False
 bot = discord.Client()
 
 @bot.event
 async def on_message(message):
+    max_size = 8 # MB
     if 'https://www.reddit.com/r/' in message.content or 'https://old.reddit.com/r/' in message.content or 'https://v.redd.it/' in message.content:
         print("reddit post")
         vreddit_id, is_nsfw = parse_video_url(message.content)
+        print(is_nsfw)
+
         if vreddit_id:
-            out_file = retrieve_video(vreddit_id, is_nsfw)
-            video_size = os.path.getsize(out_file)/(1024*1024)
-            if video_size > 8: # Discords regular user upload limit
-                compress_video(out_file)
+            out_file = retrieve_video(vreddit_id, max_size)
             if is_nsfw:
+                os.rename(out_file, 'SPOILER_out.mp4')
+                out_file = 'SPOILER_out.mp4'
                 await message.channel.send(content='[NSFW]', file=discord.File(out_file))
             else:
                 await message.channel.send(file=discord.File(out_file))
