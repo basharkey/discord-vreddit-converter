@@ -18,9 +18,12 @@ def parse_video_url(vreddit_url):
     resp = sess.get(vreddit_url)
 
     try:
-        resp.html.search('"flair":[{"text":"{}"')[0]
-        is_nsfw = True
-        print('NSFW video')
+        flair = resp.html.search('"flair":[{"text":"{}"')[0]
+        if flair.lower() == 'nsfw':
+            is_nsfw = True
+            print('NSFW video')
+        else:
+            is_nsfw = False
     except:
         is_nsfw = False
 
