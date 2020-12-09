@@ -15,6 +15,8 @@ def parse_video_url(vreddit_url):
 
     # get reddit video id from reddit post
     sess = HTMLSession()
+    vreddit_url = re.search(r'(https?://[^\s]+)', vreddit_url).group(1)
+    print(f"url: {vreddit_url}")
     resp = sess.get(vreddit_url)
 
     try:
