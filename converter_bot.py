@@ -60,6 +60,7 @@ def compress_video(files, max_size):
             else:
                 audio_size = total_file_size([audio_file])
                 target_video_bitrate = ((max_size - audio_size) * 1024 * 1024 * 8 / duration / 1024)
+
                 subprocess.run(['ffmpeg', '-y', '-i', video_file, '-i', audio_file, '-b:v', str(target_video_bitrate) + 'k', comp_file])
                 return comp_file
         except:
@@ -137,6 +138,7 @@ bot = discord.Client()
 @bot.event
 async def on_message(message):
     max_size = 8 # MB
+    max_size -= 0.1 # MB
     if 'https://www.reddit.com/r/' in message.content or 'https://old.reddit.com/r/' in message.content or 'https://v.redd.it/' in message.content:
         print("reddit post")
         vreddit_id, is_nsfw = parse_video_url(message.content)
