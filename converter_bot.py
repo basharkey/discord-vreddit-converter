@@ -30,7 +30,7 @@ def parse_video_url(vreddit_url):
         is_nsfw = False
 
     try:
-        vreddit_id = resp.html.search('"contentUrl":"https://v.redd.it/{}/HLSPlaylist.m3u8')[0]
+        vreddit_id = resp.html.search('"hlsUrl":"https://v.redd.it/{}/HLSPlaylist.m3u8')[0]
         print(repr(vreddit_id))
         return vreddit_id, is_nsfw
     except:
