@@ -121,10 +121,7 @@ def retrieve_video(vreddit_id, max_size):
             out_file = compress_video([video_file, audio_file], max_size)
         else:
             out_file = 'out.mp4'
-            subprocess.run(['ffmpeg', '-y', '-i', video_file, '-i', audio_file, out_file])
-            # ensure that combined video doesn't exceed max size
-            if total_file_size([out_file]) > max_size:
-                out_file = compress_video([video_file, audio_file], max_size)
+            subprocess.run(['ffmpeg', '-y', '-i', video_file, '-i', audio_file, '-c', 'copy', out_file])
             
         return out_file 
 
