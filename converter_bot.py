@@ -15,14 +15,13 @@ def parse_video_url(vreddit_url):
     # get reddit video id from reddit post
     sess = HTMLSession()
     vreddit_url = re.search(r'(https?://[^\s]+)', vreddit_url).group(1)
-    print(f"url: {vreddit_url}")
+    print(f"Reddit URL: {vreddit_url}")
     resp = sess.get(vreddit_url)
 
     try:
         flair = resp.html.search('"flair":[{"text":"{}"')[0]
         if flair.lower() == 'nsfw':
             is_nsfw = True
-            print('NSFW video')
         else:
             is_nsfw = False
     except:
@@ -30,7 +29,7 @@ def parse_video_url(vreddit_url):
 
     try:
         vreddit_id = resp.html.search('"hlsUrl":"https://v.redd.it/{}/HLSPlaylist.m3u8')[0]
-        print(repr(vreddit_id))
+        print(f"vReddit ID: {vreddit_id}")
         return vreddit_id, is_nsfw
     except:
         return False, False
@@ -66,8 +65,7 @@ def compress_video(files, max_size):
                 subprocess.run(['ffmpeg', '-y', '-i', video_file, '-i', audio_file, '-b:v', str(target_video_bitrate) + 'k', '-pass', '2', comp_file])
 
                 return comp_file
-        except Exception as e:
-            print(e)
+        except:
             comp_ratio = target_bitrate / video_bitrate
     
         target_video_bitrate = video_bitrate * comp_ratio
@@ -86,7 +84,6 @@ def total_file_size(files):
     total_size = 0
     for file in files:
         total_size += os.path.getsize(file) / (1024 * 1024)
-    print(f"{total_size} MB")
     return total_size
 
 
@@ -97,11 +94,11 @@ def retrieve_video(vreddit_id, max_size):
     # get video and audio files
     supported_resolutions = ['1080', '720', '480', '360', '240']
     for resolution in supported_resolutions:
-        print(f'downloading @ {resolution}')
+        print(f"Downloading @ {resolution}")
         r = requests.get('https://v.redd.it/' + vreddit_id + '/DASH_' + resolution + '.mp4')
 
         if 'Access Denied' in str(r.content):
-            print(f'could not donwload @ {resolution}')
+            print(f"Video not available @ {resolution}")
             continue
         else:
             with open (video_file, 'wb') as f:
@@ -145,9 +142,9 @@ bot = discord.Client()
 async def on_message(message):
     max_size = 8 # MB
     if 'https://www.reddit.com/r/' in message.content or 'https://old.reddit.com/r/' in message.content or 'https://v.redd.it/' in message.content:
-        print("reddit post")
+        print("Reddit post detected")
         vreddit_id, is_nsfw = parse_video_url(message.content)
-        print(is_nsfw)
+        print(f"NSFW: {is_nsfw}")
 
         if vreddit_id:
             msg = await message.channel.send(content='Converting...')
@@ -160,7 +157,7 @@ async def on_message(message):
             else:
                 await message.channel.send(file=discord.File(out_file))
         else:
-            print("not vreddit")
+            print("Unable to find vReddit ID")
             return
 
 bot.run(token)
