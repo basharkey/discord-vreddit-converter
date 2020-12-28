@@ -63,21 +63,24 @@ def compress_video(files, max_size):
                 audio_size = total_file_size([audio_file])
                 target_video_bitrate = ((max_size - audio_size) * 1024 * 1024 * 8 / duration / 1024)
 
-                subprocess.run(['ffmpeg', '-y', '-i', video_file, '-i', audio_file, '-b:v', str(target_video_bitrate) + 'k', comp_file])
+                subprocess.run(['ffmpeg', '-y', '-i', video_file, '-b:v', str(target_video_bitrate) + 'k', '-pass', '1', '-f', 'mp4', '/dev/null'])
+                subprocess.run(['ffmpeg', '-y', '-i', video_file, '-i', audio_file, '-b:v', str(target_video_bitrate) + 'k', '-pass', '2', comp_file])
+
                 return comp_file
-        except:
+        except Exception as e:
+            print(e)
             comp_ratio = target_bitrate / video_bitrate
     
         target_video_bitrate = video_bitrate * comp_ratio
 
         try:
-            subprocess.run(['ffmpeg', '-y', '-i', video_file, '-i', audio_file, '-b:v', str(target_video_bitrate) + 'k', '-b:a', str(target_audio_bitrate) + 'k', comp_file])
+            subprocess.run(['ffmpeg', '-y', '-i', video_file, '-i', audio_file, '-b:v', str(target_video_bitrate) + 'k', '-b:a', str(target_audio_bitrate) + 'k', '-pass', '1', '-f', 'mp4', '/dev/null'])
+            subprocess.run(['ffmpeg', '-y', '-i', video_file, '-i', audio_file, '-b:v', str(target_video_bitrate) + 'k', '-b:a', str(target_audio_bitrate) + 'k', '-pass', '2', comp_file])
         except:
-            subprocess.run(['ffmpeg', '-y', '-i', video_file, '-b:v', str(target_video_bitrate) + 'k', comp_file])
+            subprocess.run(['ffmpeg', '-y', '-i', video_file, '-b:v', str(target_video_bitrate) + 'k', '-pass', '1', '-f', 'mp4', '/dev/null'])
+            subprocess.run(['ffmpeg', '-y', '-i', video_file, '-b:v', str(target_video_bitrate) + 'k', '-pass', '2', comp_file])
     
-        
         return comp_file
-
 
 
 def total_file_size(files):
@@ -91,7 +94,6 @@ def total_file_size(files):
 def retrieve_video(vreddit_id, max_size):
     video_file = 'video.mp4'
     audio_file = 'audio.mp4'
-
 
     # get video and audio files
     supported_resolutions = ['1080', '720', '480', '360', '240']
@@ -124,6 +126,9 @@ def retrieve_video(vreddit_id, max_size):
         else:
             out_file = 'out.mp4'
             subprocess.run(['ffmpeg', '-y', '-i', video_file, '-i', audio_file, out_file])
+            # ensure that combined video doesn't exceed max size
+            if total_file_size([out_file]) > max_size:
+                out_file = compress_video([video_file, audio_file], max_size)
             
         return out_file 
 
@@ -140,14 +145,15 @@ bot = discord.Client()
 @bot.event
 async def on_message(message):
     max_size = 8 # MB
-    max_size -= 0.1 # MB
     if 'https://www.reddit.com/r/' in message.content or 'https://old.reddit.com/r/' in message.content or 'https://v.redd.it/' in message.content:
         print("reddit post")
         vreddit_id, is_nsfw = parse_video_url(message.content)
         print(is_nsfw)
 
         if vreddit_id:
+            msg = await message.channel.send(content='Converting...')
             out_file = retrieve_video(vreddit_id, max_size)
+            await msg.delete() 
             if is_nsfw:
                 os.rename(out_file, 'SPOILER_out.mp4')
                 out_file = 'SPOILER_out.mp4'
