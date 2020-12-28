@@ -2,7 +2,6 @@
 from requests_html import HTMLSession
 from dotenv import load_dotenv
 import sys
-import time
 import requests
 import re
 import os
