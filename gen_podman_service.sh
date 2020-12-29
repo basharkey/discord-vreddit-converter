@@ -15,4 +15,5 @@ systemctl stop vreddit
 cp container-*.service /etc/systemd/system/vreddit.service
 rm container-*.service
 systemctl daemon-reload 
+systemctl enable vreddit
 systemctl start vreddit
