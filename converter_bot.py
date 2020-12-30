@@ -35,7 +35,7 @@ def parse_video_url(vreddit_url):
         return False, False
 
 
-def compress_video(files, max_size):
+def compress_video(files, max_size, orig_max_size):
         video_file = files[0]
 
         # get video duration sec
@@ -64,6 +64,10 @@ def compress_video(files, max_size):
                 subprocess.run(['ffmpeg', '-y', '-i', video_file, '-b:v', str(target_video_bitrate) + 'k', '-pass', '1', '-f', 'mp4', '/dev/null'])
                 subprocess.run(['ffmpeg', '-y', '-i', video_file, '-i', audio_file, '-b:v', str(target_video_bitrate) + 'k', '-pass', '2', comp_file])
 
+                if total_file_size([comp_file]) > orig_max_size:
+                    max_size -= 1
+                    compress_video(files, max_size, orig_max_size)
+
                 return comp_file
         except:
             comp_ratio = target_bitrate / video_bitrate
@@ -76,7 +80,11 @@ def compress_video(files, max_size):
         except:
             subprocess.run(['ffmpeg', '-y', '-i', video_file, '-b:v', str(target_video_bitrate) + 'k', '-pass', '1', '-f', 'mp4', '/dev/null'])
             subprocess.run(['ffmpeg', '-y', '-i', video_file, '-b:v', str(target_video_bitrate) + 'k', '-pass', '2', comp_file])
-    
+
+        if total_file_size([comp_file]) > orig_max_size:
+            max_size -= 1
+            compress_video(files, max_size, orig_max_size)
+
         return comp_file
 
 
@@ -109,7 +117,7 @@ def retrieve_video(vreddit_id, max_size):
     # some reddit videos dont contain audio, if audio doesnt exist post video only
     if 'Access Denied' in str(r.content):
         if total_file_size([video_file]) > max_size:
-            out_file = compress_video([video_file], max_size)
+            out_file = compress_video([video_file], max_size, max_size)
         else:
             out_file = video_file
         return out_file 
@@ -118,7 +126,7 @@ def retrieve_video(vreddit_id, max_size):
             f.write(r.content)
 
         if total_file_size([video_file, audio_file]) > max_size:
-            out_file = compress_video([video_file, audio_file], max_size)
+            out_file = compress_video([video_file, audio_file], max_size, max_size)
         else:
             out_file = 'out.mp4'
             subprocess.run(['ffmpeg', '-y', '-i', video_file, '-i', audio_file, '-c', 'copy', out_file])
